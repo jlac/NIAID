@@ -63,12 +63,12 @@ dict_CIDR = dict(zip(df['Phenotips_ID'].tolist(), df['CIDR_Exome_ID'].tolist()))
 ##
 rule all:
     input: 
-        #bam = expand(join(dir_renamed, "BAM", "{newID}.bam"), newID=list(dict_CIDR.keys())),
-        #vcf = join(dir_renamed, "VCF", batch_name + ".vcf.gz"),
-        #vci = join(dir_renamed, "VCF", batch_name + ".vcf.gz.tbi"),
-        #target = expand(join(dir_renamed, "QC", "TARGET", "{newID}.TARGET.sample_{fname}.csv"), newID = list(dict_CIDR.keys()), fname=fnames),
-        #ucsc = expand(join(dir_renamed, "QC", "UCSC", "{newID}.UCSC.sample_{fname}.csv"), newID = list(dict_CIDR.keys()), fname=fnames),
-        #last_ped = join(dir_peds, todays_date, "seqr_ped_batch" + last_batch + ".txt"),
+        bam = expand(join(dir_renamed, "BAM", "{newID}.bam"), newID=list(dict_CIDR.keys())),
+        vcf = join(dir_renamed, "VCF", batch_name + ".vcf.gz"),
+        vci = join(dir_renamed, "VCF", batch_name + ".vcf.gz.tbi"),
+        target = expand(join(dir_renamed, "QC", "TARGET", "{newID}.TARGET.sample_{fname}.csv"), newID = list(dict_CIDR.keys()), fname=fnames),
+        ucsc = expand(join(dir_renamed, "QC", "UCSC", "{newID}.UCSC.sample_{fname}.csv"), newID = list(dict_CIDR.keys()), fname=fnames),
+        last_ped = join(dir_peds, todays_date, "seqr_ped_batch" + last_batch + ".txt"),
         hla = expand(join(dir_renamed, "HLA", "{newID}", "hla", "R1_bestguess_G.txt"), newID = list(dict_CIDR.keys())),
         admix_plot = join(dir_renamed, "BATCH_QC", "admixture", "admixture_mqc.png"),
         segs = expand(join(dir_renamed, "CNV", "gatk", "genotyped_segments_{newID}.vcf"), newID = list(dict_CIDR.keys())),
