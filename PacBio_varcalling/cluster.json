@@ -9,5 +9,10 @@
               "mem": "48g",
               "threads": "32",
               "time": "3-00:00:00",
+      },
+      "qualimap_raw": {
+              "mem": "48g",
+              "threads": "12",
+              "time": "12:00:00",
       }
 }

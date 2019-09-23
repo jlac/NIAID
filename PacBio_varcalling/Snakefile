@@ -26,7 +26,8 @@ rule all:
         expand("nanoplot_ccs/{samples}/{samples}_LengthvsQualityScatterPlot_mqc.png",samples=DATA_SAMPLES),
         expand("ccs_fastqc/{samples}.ccs_fastqc.html",samples=DATA_SAMPLES),
         expand("{samples}.realign.bam",samples=DATA_SAMPLES),
-        expand("qualimap/{samples}/qualimapReport.html",samples=DATA_SAMPLES),
+        expand("qualimap/{samples}_ccs/qualimapReport.html",samples=DATA_SAMPLES),
+        expand("qualimap/{samples}_raw/qualimapReport.html",samples=DATA_SAMPLES),
         expand("{samples}.flagstat",samples=DATA_SAMPLES),
         expand("{samples}.picardMetrics.quality_distribution.pdf",samples=DATA_SAMPLES),
         expand("{samples}.stats.txt",samples=DATA_SAMPLES),
@@ -230,29 +231,25 @@ rule bam_recal:
         sample="{samples}",ref = ref_fasta,rname="recal"
     shell:
         """
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk BaseRecalibrator -I {input} -R {params.genome} {params.knowns} -O {output.re}
         gatk ApplyBQSR -R {params.genome} -I {input} --bqsr-recal-file {output.re} -o {output.bam}
         """
 
-#
-#
-#
-# #rule 13
-# ###Qualimap QC on BAM file
-rule qualimap_qc_on_bam:
+###Qualimap QC on BAM file
+rule qualimap_ccs:
     input:
         "{samples}.realign.bam",
     output:
-        "qualimap/{samples}/qualimapReport.html"
+        "qualimap/{samples}_ccs/qualimapReport.html"
     params:
         sample="{samples}",rname="qualimap"
     shell:
         """mkdir -p qualimap
-        mkdir -p qualimap/{params.sample}
+        mkdir -p qualimap/{params.sample}_ccs
         module load qualimap/2.2.1
         unset DISPLAY
-        qualimap bamqc --java-mem-size=48G -bam {input} -c -outdir qualimap/{params.sample} -nt 12 -outformat HTML -nw 500 -outfile {output}"""
+        qualimap bamqc --java-mem-size=48G -bam {input} -c -outdir qualimap/{params.sample}_ccs -nt 12 -outformat HTML -nw 500 -outfile {output}"""
 #
 #rule 14
 ##samtools flagstats
@@ -304,7 +301,7 @@ rule gvcf_haplo:
     params:
         ref = ref_fasta,rname="haploGVCFs"
     shell:
-        """module load GATK/4.1.2.0
+        """module load GATK/4.1.3.0
         gatk HaplotypeCaller -R {params.ref} -I {input} -O {output.gvcf} --ploidy 1 --pcr-indel-model AGGRESSIVE -bamout {output.calls_bam} -ERC GVCF --minimum-mapping-quality 60 --annotation-group AS_StandardAnnotation --annotation-group StandardAnnotation"""
 
 ##joint HaplotypeCaller
@@ -317,7 +314,7 @@ rule joint_haplo:
     run:
         fl=os.popen("ls *.realign.bam").read().split()      
         var=" -I "+" -I ".join(fl)
-        cmd="mkdir -p joint_vcfs; module load GATK/4.1.2.0; gatk HaplotypeCaller -R {params.ref} -O {output.vcf} --ploidy 1 --pcr-indel-model AGGRESSIVE --minimum-mapping-quality 60 --annotation-group StandardAnnotation"+var
+        cmd="mkdir -p joint_vcfs; module load GATK/4.1.3.0; gatk HaplotypeCaller -R {params.ref} -O {output.vcf} --ploidy 1 --pcr-indel-model AGGRESSIVE --minimum-mapping-quality 60 --annotation-group StandardAnnotation"+var
         print(cmd)
         shell(cmd)
 
@@ -331,7 +328,7 @@ rule combo_gvcfs:
     run:
         fl=os.popen("ls *.gvcf").read().split()
         var=" --variant "+" --variant ".join(fl)
-        cmd="module load GATK/4.1.2.0; gatk CombineGVCFs -R {params.ref} -O {output.gvcf} --annotation-group AS_StandardAnnotation --annotation-group StandardAnnotation"+var
+        cmd="module load GATK/4.1.3.0; gatk CombineGVCFs -R {params.ref} -O {output.gvcf} --annotation-group AS_StandardAnnotation --annotation-group StandardAnnotation"+var
         print(cmd)
         shell(cmd)
 
@@ -343,7 +340,7 @@ rule genotyping:
     params:
         ref = ref_fasta,rname="genoGVCFs"
     run:
-        cmd="module load GATK/4.1.2.0; gatk GenotypeGVCFs -R {params.ref} -V {input.gvcf} -O {output.vcf} --annotation-group AS_StandardAnnotation --annotation-group StandardAnnotation"
+        cmd="module load GATK/4.1.3.0; gatk GenotypeGVCFs -R {params.ref} -V {input.gvcf} -O {output.vcf} --annotation-group AS_StandardAnnotation --annotation-group StandardAnnotation"
         print(cmd)
         shell(cmd)
 
@@ -366,7 +363,7 @@ rule filter:
         ref = ref_fasta,gff=gff_file,ids=gene_symbols,desc=gene_descriptions,rname="filterVCF"
     shell:
         """
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk SelectVariants -R {params.ref} --variant {input.vcf} -O {output.snps} --select-type-to-include SNP --exclude-filtered
         gatk SelectVariants -R {params.ref} --variant {input.vcf} --select-type-to-include INDEL --exclude-filtered -O {output.shortindels} --max-indel-size 1 --min-indel-size 1
         gatk SelectVariants -R {params.ref} --variant {input.vcf} --select-type-to-include INDEL --exclude-filtered -O {output.indels} --min-indel-size 2
@@ -401,7 +398,7 @@ rule filter_joint:
         ref = ref_fasta,gff=gff_file,ids=gene_symbols,desc=gene_descriptions,rname="filterJointVCF"
     shell:
         """
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk SelectVariants -R {params.ref} --variant {input.vcf} -O {output.snps} --select-type-to-include SNP --exclude-filtered
         gatk SelectVariants -R {params.ref} --variant {input.vcf} --select-type-to-include INDEL --exclude-filtered -O {output.shortindels} --max-indel-size 1 --min-indel-size 1
         gatk SelectVariants -R {params.ref} --variant {input.vcf} --select-type-to-include INDEL --exclude-filtered -O {output.indels} --min-indel-size 2
@@ -430,7 +427,7 @@ rule extract_sample_variants:
     shell:
         """
         mkdir -p sample_vcfs
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk SelectVariants -R {params.ref} --variant {input} -O {output.vcf} -sn {params.sample} --exclude-non-variants
         module load samtools
         bcftools stats -F {params.ref} {output.vcf} > {output.bcftools}
@@ -450,7 +447,7 @@ rule extract_joint_sample_variants:
     shell:
         """
         mkdir -p joint_vcfs/sample_vcfs
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk SelectVariants -R {params.ref} --variant {input} -O {output.vcf} -sn {params.sample} --exclude-non-variants
         module load samtools
         bcftools stats -F {params.ref} {output.vcf} > {output.bcftools}
@@ -472,7 +469,7 @@ rule annotation:
         """
         module load samtools
         bcftools query -f '%CHROM\\t%POS\\t%REF\\t%ALT[\\t%GT]\\n' {input.vcf} > {output.genotypes}
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk VariantsToTable -V {input.vcf} -O {output.table} -F EVENTLENGTH -F TRANSITION -F HET -F HOM-REF -F HOM-VAR -F NO-CALL -F TYPE -F VAR -F NSAMPLES -F NCALLED -F MULTI-ALLELIC -GF DP -GF AD -GF GT
         perl /data/NCBR/apps/make_annotated_table.pl {input.vcf} {output.genotypes} {output.table} {input.vep} {output.merged}"""
 
@@ -533,6 +530,22 @@ rule pbsv_raw_discover:
         pbsv discover {output.bam} {output.svdisc}
         """
 
+###Qualimap QC on raw subread BAM file
+rule qualimap_raw:
+    input:
+        bam="pbsv/raw/{samples}.sort.bam"
+    output:
+        "qualimap/{samples}_raw/qualimapReport.html"
+    params:
+        sample="{samples}",rname="qualimap"
+    shell:
+        """mkdir -p qualimap
+        mkdir -p qualimap/{params.sample}_raw
+        module load qualimap/2.2.1
+        unset DISPLAY
+        qualimap bamqc --java-mem-size=48G -bam {input} -c -outdir qualimap/{params.sample}_raw -sd -nt 12 -outformat HTML -nw 500 -outfile {output}"""
+
+
 ##pbsv call from raw reads
 rule pbsv_raw_call:
     input: expand("pbsv/raw/{samples}.svsig.gz",samples=DATA_SAMPLES)
@@ -562,7 +575,7 @@ rule pbsv_raw_table:
         """
         module load samtools
         bcftools query -f '%CHROM\\t%POS\\t%INFO/END\\t%ID\\t%FILTER\\t%INFO/SVTYPE\\t%INFO/SVLEN[\\t%GT]\\n' {input.vcf} > {output.genotypes}
-        module load GATK/4.1.2.0
+        module load GATK/4.1.3.0
         gatk VariantsToTable -V {input.vcf} -O {output.table} -F EVENTLENGTH -F TRANSITION -F HET -F HOM-REF -F HOM-VAR -F NO-CALL -F TYPE -F VAR -F NSAMPLES -F NCALLED -F MULTI-ALLELIC -GF DP -GF AD -raw
         module load VEP/96
         vep -sf pbsv/raw/vepstats.html --force_overwrite --fasta {params.ref} --gff {params.gff} --tab -i {input} --format vcf -o {output.vep} --pick --custom {params.ids},geneSymbol,bed,overlap,0 --custom {params.desc},geneDescription,bed,overlap,0
